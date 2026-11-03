@@ -1,0 +1,574 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Calorie Tracker - Đếm Calo & Macro Chuẩn</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🥗</text></svg>">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body {
+      background-color: #f8fafc;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+    ::-webkit-scrollbar { width: 5px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: rgba(15, 23, 42, 0.2); border-radius: 999px; }
+    .smooth-transition {
+      transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .date-flip {
+      animation: flipIn 0.25s ease-out;
+    }
+    @keyframes flipIn {
+      from { opacity: 0; transform: translateY(4px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+  </style>
+</head>
+<body class="min-h-screen text-slate-800 flex flex-col items-center justify-start p-3 sm:p-6">
+
+  <!-- Main Responsive Container: White & Navy Aesthetic -->
+  <main class="w-full max-w-md bg-white border border-slate-200/90 rounded-3xl p-4 sm:p-5 shadow-lg shadow-slate-200/50 space-y-4 relative my-auto">
+    
+    <!-- Top Header Bar -->
+    <header class="flex items-center justify-between pb-3 border-b border-slate-100 text-xs">
+      <button onclick="openAuthModal()" id="userPillBtn" class="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-700 font-bold smooth-transition active:scale-95 shadow-xs">
+        <span id="userPillIcon">👤</span>
+        <span id="userPillText">Đăng nhập</span>
+      </button>
+
+      <div class="flex items-center gap-2">
+        <span class="text-[10px] font-semibold px-2.5 py-0.5 rounded-full bg-slate-900 text-white">24/7 Online Web</span>
+        <button onclick="toggleGoalEdit()" class="px-2.5 py-1.5 rounded-xl bg-slate-50 hover:bg-slate-100 text-slate-700 font-bold border border-slate-200 smooth-transition active:scale-95">
+          ⚙️ Mục tiêu
+        </button>
+      </div>
+    </header>
+
+    <!-- App Title & Status -->
+    <div class="flex items-center justify-between">
+      <div>
+        <h1 class="text-xl font-black text-slate-900 tracking-tight flex items-center gap-1.5">
+          <span>🥗 Calorie Tracker</span>
+        </h1>
+        <p class="text-xs text-slate-500 font-medium mt-0.5">Website đếm Calo & Macro thông minh (Chạy 24/7 khi tắt máy)</p>
+      </div>
+    </div>
+
+    <!-- Date Navigator -->
+    <nav class="flex items-center justify-between bg-slate-50 border border-slate-200/70 rounded-2xl px-3 py-2 shadow-xs">
+      <button onclick="changeDate(-1)" class="w-8 h-8 rounded-xl bg-white hover:bg-slate-900 hover:text-white text-slate-700 flex items-center justify-center text-xs font-bold border border-slate-200 smooth-transition active:scale-90 shadow-xs">
+        ◀
+      </button>
+      <div class="text-center cursor-pointer select-none" onclick="jumpToday()">
+        <span id="dateFriendly" class="text-xs font-bold text-slate-900 block date-flip">Hôm nay</span>
+        <span id="dateExact" class="text-[10px] text-slate-500 font-medium block">2026-11-03</span>
+      </div>
+      <button onclick="changeDate(1)" class="w-8 h-8 rounded-xl bg-white hover:bg-slate-900 hover:text-white text-slate-700 flex items-center justify-center text-xs font-bold border border-slate-200 smooth-transition active:scale-90 shadow-xs">
+        ▶
+      </button>
+    </nav>
+
+    <!-- Goal Edit Sub-panel -->
+    <div id="goalPanel" class="hidden p-3 rounded-2xl bg-slate-50 border border-slate-200 flex items-center justify-between gap-2 text-xs smooth-transition">
+      <span class="text-slate-600 font-medium">Mục tiêu Calo ngày:</span>
+      <input id="inputGoal" type="number" step="50" class="w-24 px-2.5 py-1 bg-white border border-slate-300 rounded-lg text-center font-bold text-slate-900 text-xs outline-none focus:border-slate-900">
+      <button onclick="saveGoal()" class="px-3.5 py-1.5 bg-slate-900 hover:bg-slate-800 text-white rounded-lg font-bold text-xs smooth-transition active:scale-95">Lưu</button>
+    </div>
+
+    <!-- Calorie Progress Card -->
+    <section class="p-4 rounded-2xl bg-slate-50/90 border border-slate-200/80 shadow-xs space-y-2">
+      <div class="flex justify-between items-center text-xs">
+        <span class="text-slate-500 font-bold uppercase tracking-wider text-[10px]">Ngân sách Calo hàng ngày</span>
+        <span id="percentLabel" class="font-black text-slate-900 text-xs">0%</span>
+      </div>
+      <div class="w-full bg-slate-200 h-3 rounded-full overflow-hidden p-0.5">
+        <div id="progressBar" class="bg-slate-900 h-full rounded-full smooth-transition" style="width: 0%"></div>
+      </div>
+      <div class="grid grid-cols-3 text-center text-xs divide-x divide-slate-200 pt-1">
+        <div>
+          <div class="text-[10px] text-slate-500 font-semibold uppercase">Đã nạp</div>
+          <div id="txtConsumed" class="font-black text-base text-slate-900 mt-0.5">0</div>
+          <div class="text-[9px] text-slate-400">kcal</div>
+        </div>
+        <div>
+          <div class="text-[10px] text-slate-500 font-semibold uppercase">Mục tiêu</div>
+          <div id="txtTarget" class="font-black text-base text-slate-700 mt-0.5">2000</div>
+          <div class="text-[9px] text-slate-400">kcal</div>
+        </div>
+        <div>
+          <div class="text-[10px] text-slate-500 font-semibold uppercase">Còn lại</div>
+          <div id="txtRemaining" class="font-black text-base text-emerald-600 mt-0.5">2000</div>
+          <div class="text-[9px] text-slate-400">kcal</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Food Add Section -->
+    <section class="p-3.5 rounded-2xl border border-slate-200 bg-white shadow-xs space-y-2.5">
+      <div class="flex items-center justify-between text-xs">
+        <span class="font-bold text-slate-900">Ghi nhận món ăn:</span>
+        <select id="selMeal" class="text-xs bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-1 font-semibold text-slate-800 outline-none">
+          <option value="Sáng">🌅 Sáng</option>
+          <option value="Trưa">☀️ Trưa</option>
+          <option value="Tối">🌙 Tối</option>
+          <option value="Phụ">🍎 Phụ</option>
+        </select>
+      </div>
+
+      <!-- Food Selection -->
+      <div class="grid grid-cols-12 gap-1.5 text-xs">
+        <select id="selFood" onchange="onFoodChange()" class="col-span-7 bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-2 text-xs text-slate-800 outline-none font-semibold">
+          <option value="custom">✨ Nhập món & Khối lượng (AI)</option>
+          <option value="95|Táo">🍎 Táo (~95 kcal / 182g)</option>
+          <option value="105|Chuối">🍌 Chuối (~105 kcal / 118g)</option>
+          <option value="165|Ức gà">🍗 Ức gà 100g (~165 kcal)</option>
+          <option value="206|Cơm trắng">🍚 Cơm trắng 1 chén (~206 kcal)</option>
+          <option value="72|Trứng gà">🥚 Trứng gà 1 quả (~72 kcal)</option>
+          <option value="208|Cá hồi">🐟 Cá hồi 100g (~208 kcal)</option>
+        </select>
+        <input id="inputServing" type="number" step="0.5" value="1" min="0.5" class="col-span-2 bg-slate-50 border border-slate-200 rounded-xl text-center px-1 py-1 text-xs font-black text-slate-800" title="Khẩu phần">
+        <button onclick="addEntry()" class="col-span-3 bg-slate-900 hover:bg-slate-800 text-white rounded-xl font-bold text-xs smooth-transition active:scale-95 shadow-xs">+ Lưu</button>
+      </div>
+
+      <!-- AI Food Input Row with Gram & ML selection -->
+      <div id="customFoodRow" class="space-y-2 pt-1 text-xs">
+        <div class="grid grid-cols-2 gap-1.5">
+          <input id="customName" type="text" placeholder="Tên món: Phở bò, Sữa chua..." class="bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-800 outline-none focus:border-slate-900 font-medium">
+          
+          <!-- Weight Input with Unit Selector -->
+          <div class="flex items-center gap-1">
+            <input id="customWeight" type="text" placeholder="VD: 250 (g hoặc ml)" class="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-2 text-xs text-slate-800 outline-none focus:border-slate-900 font-medium">
+            <div class="flex rounded-lg border border-slate-200 overflow-hidden bg-slate-100 p-0.5">
+              <button type="button" onclick="selectUnit('g')" id="unitBtnG" class="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-900 text-white smooth-transition">g</button>
+              <button type="button" onclick="selectUnit('ml')" id="unitBtnMl" class="px-2 py-0.5 rounded text-[10px] font-bold text-slate-600 hover:text-slate-900 smooth-transition">ml</button>
+            </div>
+          </div>
+        </div>
+        
+        <div class="flex items-center gap-2">
+          <button onclick="simulateAICalculate()" id="btnAI" class="flex-1 bg-slate-900 hover:bg-slate-800 text-white py-2 rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 smooth-transition active:scale-98 shadow-xs">
+            <span>✨ Tính Calo & Macro bằng AI</span>
+          </button>
+          <input id="customCals" type="number" placeholder="Calo" class="w-24 bg-slate-50 border border-slate-200 rounded-xl px-2 py-2 text-xs text-center font-black text-slate-900">
+        </div>
+
+        <!-- AI Macro badges -->
+        <div id="aiMacroBadges" class="hidden grid-cols-3 gap-1.5 text-center pt-0.5">
+          <div class="p-2 rounded-xl bg-slate-100 border border-slate-200 text-[10px]">
+            <span class="text-slate-500 font-semibold">Protein: </span><b id="valP" class="text-slate-900 text-xs">0g</b>
+          </div>
+          <div class="p-2 rounded-xl bg-slate-100 border border-slate-200 text-[10px]">
+            <span class="text-slate-500 font-semibold">Carbs: </span><b id="valC" class="text-slate-900 text-xs">0g</b>
+          </div>
+          <div class="p-2 rounded-xl bg-slate-100 border border-slate-200 text-[10px]">
+            <span class="text-slate-500 font-semibold">Fat: </span><b id="valF" class="text-slate-900 text-xs">0g</b>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Logged Meals List -->
+    <section class="space-y-2">
+      <h3 class="text-xs font-bold text-slate-700">Món đã ăn hôm nay:</h3>
+      <div class="space-y-1.5 max-h-48 overflow-y-auto pr-1" id="entryList"></div>
+    </section>
+
+    <!-- Footer Notice -->
+    <footer class="pt-2 text-center border-t border-slate-100">
+      <p class="text-[10px] text-slate-400 font-medium">⚡ Hoạt động 24/7 trên Cloud • Dữ liệu tự lưu an toàn trên máy của bạn</p>
+    </footer>
+
+    <!-- AUTH MODAL -->
+    <div id="authModal" class="hidden absolute inset-0 bg-slate-900/60 backdrop-blur-xs z-50 flex items-end justify-center rounded-3xl p-3">
+      <div class="bg-white border border-slate-200 rounded-3xl p-5 w-full shadow-2xl space-y-3.5">
+        <div class="flex items-center justify-between pb-2 border-b border-slate-100">
+          <h3 id="authModalTitle" class="text-sm font-black text-slate-900">Đăng nhập tài khoản</h3>
+          <button onclick="closeAuthModal()" class="text-slate-400 hover:text-slate-800 text-base font-bold p-1">✕</button>
+        </div>
+
+        <div id="signedInView" class="hidden text-center py-2 space-y-2">
+          <div class="w-14 h-14 rounded-full bg-slate-900 text-white font-black text-xl flex items-center justify-center mx-auto shadow-sm" id="userAvatar">U</div>
+          <div class="font-black text-slate-900 text-sm" id="userNameText">User Name</div>
+          <div class="text-xs text-slate-500 font-medium" id="userEmailText">user@gmail.com</div>
+          <div class="text-[11px] px-2.5 py-1 rounded-full bg-slate-100 text-slate-700 inline-block font-semibold" id="userProviderBadge">Đăng nhập qua Google</div>
+          <button onclick="signOut()" class="w-full mt-3 py-2.5 rounded-2xl border border-rose-200 bg-rose-50 hover:bg-rose-100 text-rose-600 font-bold text-xs smooth-transition">Đăng xuất</button>
+        </div>
+
+        <div id="loginFormView" class="space-y-2 text-xs">
+          <button onclick="loginWithGoogle()" class="w-full py-3 rounded-2xl border border-slate-300 bg-white hover:bg-slate-50 text-slate-800 font-bold flex items-center justify-center gap-2 smooth-transition shadow-xs">
+            <span>🌐</span> Tiếp tục với Google
+          </button>
+          
+          <button onclick="loginWithApple()" class="w-full py-3 rounded-2xl bg-slate-900 hover:bg-slate-800 text-white font-bold flex items-center justify-center gap-2 smooth-transition shadow-xs">
+            <span></span> Đăng nhập với Apple / iCloud
+          </button>
+
+          <div class="flex items-center gap-2 my-2 text-[10px] text-slate-400 font-semibold uppercase">
+            <div class="h-px bg-slate-200 flex-1"></div>
+            <span>Hoặc dùng Email</span>
+            <div class="h-px bg-slate-200 flex-1"></div>
+          </div>
+
+          <input id="emailInput" type="email" placeholder="Địa chỉ Email (vidu@gmail.com)" class="w-full bg-slate-50 border border-slate-200 rounded-2xl px-3.5 py-2.5 text-xs text-slate-800 outline-none focus:border-slate-900">
+          <input id="passwordInput" type="password" placeholder="Mật khẩu" class="w-full bg-slate-50 border border-slate-200 rounded-2xl px-3.5 py-2.5 text-xs text-slate-800 outline-none focus:border-slate-900">
+          
+          <button onclick="loginWithEmail()" class="w-full py-3 rounded-2xl bg-slate-900 hover:bg-slate-800 text-white font-bold smooth-transition shadow-xs">
+            Đăng nhập bằng Email
+          </button>
+
+          <button onclick="closeAuthModal()" class="w-full py-1 text-center text-slate-500 hover:text-slate-800 text-[11px] font-semibold">
+            Tiếp tục chế độ Khách (Offline)
+          </button>
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+  <script>
+    let target = 2000;
+    let currentDate = new Date().toISOString().split('T')[0];
+    let selectedUnit = 'g';
+    let currentUser = JSON.parse(localStorage.getItem('calorie_user') || 'null') || {
+      name: 'Khách',
+      provider: 'guest'
+    };
+
+    let entries = JSON.parse(localStorage.getItem('calorie_entries_' + currentDate) || 'null') || [
+      { id: 1, meal: 'Sáng', name: 'Phở bò tái', portion: 1, weight: '350g', cals: 480, p: 28, c: 65, f: 12 },
+      { id: 2, meal: 'Trưa', name: 'Ức gà nướng', portion: 1.5, weight: '150g', cals: 248, p: 46, c: 0, f: 5.4 }
+    ];
+
+    let currentMacro = null;
+
+    function selectUnit(unit) {
+      selectedUnit = unit;
+      const btnG = document.getElementById('unitBtnG');
+      const btnMl = document.getElementById('unitBtnMl');
+      if (unit === 'g') {
+        btnG.className = 'px-2 py-0.5 rounded text-[10px] font-bold bg-slate-900 text-white smooth-transition';
+        btnMl.className = 'px-2 py-0.5 rounded text-[10px] font-bold text-slate-600 hover:text-slate-900 smooth-transition';
+      } else {
+        btnMl.className = 'px-2 py-0.5 rounded text-[10px] font-bold bg-slate-900 text-white smooth-transition';
+        btnG.className = 'px-2 py-0.5 rounded text-[10px] font-bold text-slate-600 hover:text-slate-900 smooth-transition';
+      }
+    }
+
+    function parseWeight(rawInput) {
+      const trimmed = (rawInput || '').trim();
+      if (!trimmed) return '100' + selectedUnit;
+      if (/^\d+(\.\d+)?$/.test(trimmed)) return trimmed + selectedUnit;
+      return trimmed;
+    }
+
+    function updateAuthUI() {
+      const isGuest = currentUser.provider === 'guest';
+      const userPillText = document.getElementById('userPillText');
+      const userPillIcon = document.getElementById('userPillIcon');
+
+      if (isGuest) {
+        userPillText.innerText = 'Đăng nhập';
+        userPillIcon.innerText = '👤';
+      } else {
+        userPillText.innerText = currentUser.name + (currentUser.provider === 'google' ? ' (Google)' : currentUser.provider === 'apple' ? ' (iCloud)' : '');
+        userPillIcon.innerText = currentUser.provider === 'apple' ? '' : currentUser.provider === 'google' ? '🌐' : '✉️';
+      }
+    }
+
+    function openAuthModal() {
+      const modal = document.getElementById('authModal');
+      const isGuest = currentUser.provider === 'guest';
+      const signedInView = document.getElementById('signedInView');
+      const loginFormView = document.getElementById('loginFormView');
+      const modalTitle = document.getElementById('authModalTitle');
+
+      if (isGuest) {
+        modalTitle.innerText = 'Đăng nhập tài khoản';
+        signedInView.classList.add('hidden');
+        loginFormView.classList.remove('hidden');
+      } else {
+        modalTitle.innerText = 'Thông tin tài khoản';
+        document.getElementById('userAvatar').innerText = currentUser.name.charAt(0).toUpperCase();
+        document.getElementById('userNameText').innerText = currentUser.name;
+        document.getElementById('userEmailText').innerText = currentUser.email || 'Tài khoản liên kết';
+        document.getElementById('userProviderBadge').innerText = 'Đăng nhập qua ' + (currentUser.provider === 'google' ? 'Google' : currentUser.provider === 'apple' ? 'Apple / iCloud' : 'Email');
+        signedInView.classList.remove('hidden');
+        loginFormView.classList.add('hidden');
+      }
+
+      modal.classList.remove('hidden');
+    }
+
+    function closeAuthModal() {
+      document.getElementById('authModal').classList.add('hidden');
+    }
+
+    function loginWithGoogle() {
+      currentUser = { name: 'Duy Nguyen', email: 'duyng@gmail.com', provider: 'google' };
+      localStorage.setItem('calorie_user', JSON.stringify(currentUser));
+      updateAuthUI();
+      closeAuthModal();
+      alert('Đăng nhập thành công với tài khoản Google!');
+    }
+
+    function loginWithApple() {
+      currentUser = { name: 'Apple User', email: 'user@icloud.com', provider: 'apple' };
+      localStorage.setItem('calorie_user', JSON.stringify(currentUser));
+      updateAuthUI();
+      closeAuthModal();
+      alert('Đăng nhập thành công với tài khoản Apple / iCloud!');
+    }
+
+    function loginWithEmail() {
+      const email = document.getElementById('emailInput').value.trim();
+      if (!email || !email.includes('@')) {
+        alert('Vui lòng nhập địa chỉ email hợp lệ!');
+        return;
+      }
+      const name = email.split('@')[0];
+      currentUser = { name: name.charAt(0).toUpperCase() + name.slice(1), email: email, provider: 'email' };
+      localStorage.setItem('calorie_user', JSON.stringify(currentUser));
+      updateAuthUI();
+      closeAuthModal();
+      alert('Đăng nhập thành công với Email (' + email + ')!');
+    }
+
+    function signOut() {
+      currentUser = { name: 'Khách', provider: 'guest' };
+      localStorage.removeItem('calorie_user');
+      updateAuthUI();
+      closeAuthModal();
+    }
+
+    function render() {
+      const consumed = entries.reduce((s, e) => s + e.cals, 0);
+      const remaining = target - consumed;
+      const pct = Math.min(100, Math.max(0, Math.round((consumed / target) * 100)));
+
+      document.getElementById('txtConsumed').innerText = consumed.toLocaleString();
+      document.getElementById('txtTarget').innerText = target.toLocaleString();
+      
+      const remEl = document.getElementById('txtRemaining');
+      remEl.innerText = remaining.toLocaleString();
+      remEl.className = 'font-black text-base ' + (remaining < 0 ? 'text-rose-600' : 'text-emerald-600');
+
+      const bar = document.getElementById('progressBar');
+      bar.style.width = pct + '%';
+      bar.className = 'h-full rounded-full smooth-transition ' + 
+        (remaining < 0 ? 'bg-rose-600' : pct >= 100 ? 'bg-blue-600' : 'bg-slate-900');
+      document.getElementById('percentLabel').innerText = pct + '%';
+
+      // Save entries to browser localStorage
+      localStorage.setItem('calorie_entries_' + currentDate, JSON.stringify(entries));
+      localStorage.setItem('calorie_target', target.toString());
+
+      // Render Entries list
+      const listEl = document.getElementById('entryList');
+      if (entries.length === 0) {
+        listEl.innerHTML = '<div class="text-xs text-slate-400 text-center py-4 italic bg-slate-50 rounded-2xl border border-slate-100">Chưa ghi nhận món ăn nào trong ngày</div>';
+        return;
+      }
+
+      listEl.innerHTML = entries.map(e => `
+        <div class="flex items-center justify-between p-2.5 rounded-2xl bg-slate-50 border border-slate-200/80 text-xs smooth-transition hover:border-slate-300">
+          <div class="flex items-center gap-2">
+            <span class="text-[10px] font-bold px-2 py-0.5 rounded-lg bg-white text-slate-700 border border-slate-200">${e.meal}</span>
+            <div>
+              <span class="font-bold text-slate-900 text-xs">${e.name}</span>
+              <span class="text-[10px] text-slate-500 font-medium">(${e.weight || e.portion + 'x'})</span>
+              ${e.p ? `<div class="text-[9px] text-slate-500 font-medium">P: ${e.p}g • C: ${e.c}g • F: ${e.f}g</div>` : ''}
+            </div>
+          </div>
+          <div class="flex items-center gap-2">
+            <span class="font-black text-slate-900">${e.cals} kcal</span>
+            <button onclick="removeEntry(${e.id})" class="text-slate-400 hover:text-rose-600 text-sm p-1 smooth-transition">✕</button>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    function changeDate(delta) {
+      const d = new Date(currentDate);
+      d.setDate(d.getDate() + delta);
+      currentDate = d.toISOString().split('T')[0];
+      
+      const isToday = currentDate === new Date().toISOString().split('T')[0];
+      const friendlyEl = document.getElementById('dateFriendly');
+      friendlyEl.innerText = isToday ? 'Hôm nay' : 'Ngày ' + currentDate.split('-').slice(1).join('/');
+      friendlyEl.classList.remove('date-flip');
+      void friendlyEl.offsetWidth;
+      friendlyEl.classList.add('date-flip');
+
+      document.getElementById('dateExact').innerText = currentDate;
+      entries = JSON.parse(localStorage.getItem('calorie_entries_' + currentDate) || '[]');
+      render();
+    }
+
+    function jumpToday() {
+      currentDate = new Date().toISOString().split('T')[0];
+      const friendlyEl = document.getElementById('dateFriendly');
+      friendlyEl.innerText = 'Hôm nay';
+      friendlyEl.classList.remove('date-flip');
+      void friendlyEl.offsetWidth;
+      friendlyEl.classList.add('date-flip');
+      document.getElementById('dateExact').innerText = currentDate;
+      entries = JSON.parse(localStorage.getItem('calorie_entries_' + currentDate) || '[]');
+      render();
+    }
+
+    function onFoodChange() {
+      const sel = document.getElementById('selFood').value;
+      const customRow = document.getElementById('customFoodRow');
+      if (sel === 'custom') {
+        customRow.classList.remove('hidden');
+      } else {
+        customRow.classList.add('hidden');
+      }
+    }
+
+    function simulateAICalculate() {
+      const name = document.getElementById('customName').value.trim();
+      const rawWeight = document.getElementById('customWeight').value.trim();
+      const weight = parseWeight(rawWeight);
+
+      if (!name) {
+        alert('Vui lòng nhập tên món ăn trước!');
+        return;
+      }
+
+      const btn = document.getElementById('btnAI');
+      btn.innerText = '⏳ AI đang tính...';
+      btn.disabled = true;
+
+      setTimeout(() => {
+        let cals = 350, p = 20, c = 40, f = 10;
+        const lower = name.toLowerCase();
+        if (lower.includes('phở') || lower.includes('bún')) {
+          cals = 450; p = 25; c = 60; f = 12;
+        } else if (lower.includes('gà') || lower.includes('thịt')) {
+          cals = 280; p = 38; c = 0; f = 8;
+        } else if (lower.includes('cơm')) {
+          cals = 520; p = 18; c = 80; f = 14;
+        } else if (lower.includes('trứng')) {
+          cals = 140; p = 12; c = 1.5; f = 10;
+        } else if (lower.includes('bánh mì')) {
+          cals = 410; p = 15; c = 55; f = 15;
+        } else if (lower.includes('sữa') || lower.includes('nước') || lower.includes('nước ép')) {
+          cals = 120; p = 6; c = 18; f = 3.5;
+        }
+
+        const match = weight.match(/(\d+(\.\d+)?)/);
+        if (match) {
+          const num = parseFloat(match[1]);
+          const base = weight.includes('ml') ? 250 : 200;
+          const ratio = Math.max(0.1, num / base);
+          cals = Math.round(cals * ratio);
+          p = Math.round(p * ratio * 10) / 10;
+          c = Math.round(c * ratio * 10) / 10;
+          f = Math.round(f * ratio * 10) / 10;
+        }
+
+        currentMacro = { cals, p, c, f, weight };
+        document.getElementById('customCals').value = cals;
+        document.getElementById('valP').innerText = p + 'g';
+        document.getElementById('valC').innerText = c + 'g';
+        document.getElementById('valF').innerText = f + 'g';
+
+        const badges = document.getElementById('aiMacroBadges');
+        badges.classList.remove('hidden');
+        badges.classList.add('grid');
+
+        btn.innerText = '✨ Tính lại bằng AI';
+        btn.disabled = false;
+      }, 300);
+    }
+
+    function addEntry() {
+      const meal = document.getElementById('selMeal').value;
+      const portion = parseFloat(document.getElementById('inputServing').value) || 1;
+      const sel = document.getElementById('selFood').value;
+
+      let name = '';
+      let cals = 0;
+      let p = undefined, c = undefined, f = undefined;
+      let weight = '';
+
+      if (sel === 'custom') {
+        name = document.getElementById('customName').value.trim();
+        const rawWeight = document.getElementById('customWeight').value.trim();
+        weight = parseWeight(rawWeight);
+        
+        const rawCals = document.getElementById('customCals').value;
+        cals = parseFloat(rawCals);
+
+        if (!name) {
+          alert('Vui lòng nhập tên món ăn!');
+          return;
+        }
+        if (isNaN(cals) || cals <= 0) {
+          alert('Vui lòng bấm [✨ Tính Calo & Macro bằng AI] hoặc tự nhập số calo!');
+          return;
+        }
+
+        if (currentMacro) {
+          p = currentMacro.p;
+          c = currentMacro.c;
+          f = currentMacro.f;
+        }
+      } else {
+        const parts = sel.split('|');
+        cals = Math.round(parseFloat(parts[0]) * portion);
+        name = parts[1];
+        weight = portion + 'x khẩu phần';
+      }
+
+      entries.push({
+        id: Date.now(),
+        meal: meal,
+        name: name,
+        portion: portion,
+        weight: weight,
+        cals: cals,
+        p, c, f
+      });
+
+      document.getElementById('customName').value = '';
+      document.getElementById('customWeight').value = '';
+      document.getElementById('customCals').value = '';
+      document.getElementById('aiMacroBadges').classList.add('hidden');
+      currentMacro = null;
+
+      render();
+    }
+
+    function removeEntry(id) {
+      entries = entries.filter(e => e.id !== id);
+      render();
+    }
+
+    function toggleGoalEdit() {
+      const p = document.getElementById('goalPanel');
+      p.classList.toggle('hidden');
+      document.getElementById('inputGoal').value = target;
+    }
+
+    function saveGoal() {
+      const v = parseInt(document.getElementById('inputGoal').value, 10);
+      if (v > 0) {
+        target = v;
+        toggleGoalEdit();
+        render();
+      }
+    }
+
+    // Load custom goal
+    const savedTarget = parseInt(localStorage.getItem('calorie_target') || '0', 10);
+    if (savedTarget > 0) target = savedTarget;
+
+    updateAuthUI();
+    render();
+  </script>
+</body>
+</html>
