@@ -28,8 +28,9 @@
     },
     "extra": {
       "eas": {
-        "projectId": ""
+        "projectId": "1b798701-3d01-4fcc-ac2d-d885d1d07ee8"
       }
-    }
+    },
+    "owner": "briannguyen162"
   }
 }
